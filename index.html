@@ -1,0 +1,970 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Possessive Mission v3</title>
+<style>
+:root{
+  --bg:#f6f1e7;--card:#fffdf8;--ink:#26342f;--muted:#69766f;
+  --accent:#708b68;--accent2:#d98268;--line:#d9d4c8;--soft:#ebe5d9;
+  --good:#4f7a56;--bad:#a35e55;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+button,input{font:inherit} button{cursor:pointer}
+.app{max-width:1120px;margin:0 auto;padding:18px}
+.top{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px}
+.title{font-size:clamp(22px,4vw,36px);font-weight:900}.sub{color:var(--muted)}
+.pills{display:flex;gap:8px;flex-wrap:wrap}.pill{background:var(--soft);border-radius:999px;padding:8px 12px;font-weight:800}
+.progress{height:10px;background:var(--soft);border-radius:999px;overflow:hidden;margin:14px 0 18px}.bar{height:100%;width:0;background:var(--accent);transition:.35s}
+.stageNav{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:0 0 14px}
+.stageNavLabel{font-size:13px;font-weight:900;color:var(--muted);margin-right:3px}
+.stageJump{min-width:42px;min-height:38px;border:1px solid var(--line);border-radius:11px;background:var(--card);color:var(--ink);font-weight:900}
+.stageJump:hover{border-color:var(--accent)}
+.stageJump.active{background:var(--accent);border-color:var(--accent);color:#fff}
+
+.grid{display:grid;grid-template-columns:1.08fr .92fr;gap:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;min-width:0}
+.scene{min-height:355px;display:flex;align-items:center;justify-content:center;background:#f0eadf;border-radius:18px;padding:18px;overflow:hidden}
+.stageTag{font-weight:900;color:var(--accent);letter-spacing:.04em}.stageTitle{font-size:24px;font-weight:900;margin:4px 0 12px}
+.prompt{font-size:clamp(22px,3vw,32px);font-weight:900;line-height:1.25}.help{color:var(--muted);margin-top:8px}
+.choices,.wordpool{display:grid;gap:9px;margin-top:16px}.choices{grid-template-columns:repeat(2,minmax(0,1fr))}
+.btn,.choice,.word{border:1px solid var(--line);background:#fff;border-radius:14px;padding:12px 14px;min-height:48px;font-weight:800;color:var(--ink)}
+.choice:hover,.word:hover,.btn:hover{border-color:var(--accent)} .choice.good,.word.good{outline:3px solid #cfe0cc;border-color:var(--good)} .choice.bad,.word.bad{opacity:.45;text-decoration:line-through}
+.feedback{margin-top:14px;min-height:54px;padding:12px 14px;background:var(--soft);border-radius:14px;font-weight:700}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.primary{background:var(--accent);color:white;border-color:var(--accent)} .secondary{background:var(--accent2);color:white;border-color:var(--accent2)}
+.people{display:flex;align-items:flex-end;justify-content:center;gap:22px;flex-wrap:wrap}.person{text-align:center;min-width:90px}.emoji{font-size:72px;line-height:1}.name{font-weight:900;margin-top:8px}.obj{font-size:78px;text-align:center}.arrowGlyph{font-size:40px}
+.pairgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;width:100%}.pair{background:#fff;border:1px solid var(--line);border-radius:16px;padding:15px;text-align:center}.pair b{font-size:24px}
+.basegrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;width:100%}.baseCard{background:#fff;border:2px solid var(--line);border-radius:17px;padding:20px 10px;text-align:center;font-size:28px;font-weight:900;min-height:82px;display:flex;align-items:center;justify-content:center;transition:.2s}.baseCard.hit{background:#dcebdc;border-color:var(--good)} .baseCard.done{opacity:0;transform:scale(.85);pointer-events:none;transition:opacity .45s,transform .45s}
+.answerLine{margin-top:16px;min-height:58px;border:2px dashed var(--line);border-radius:14px;padding:12px;font-size:24px;font-weight:900}
+.fadeText{font-size:32px;font-weight:900;text-align:center;opacity:1;transition:opacity 4.4s linear}.fadeText.fade{opacity:0}
+.wordpool{grid-template-columns:repeat(3,minmax(0,1fr))}.word.selected{opacity:.35}.sentenceBuild{min-height:66px;border:2px dashed var(--line);border-radius:14px;padding:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px}.token{background:var(--soft);border-radius:10px;padding:8px 10px;font-weight:900}
+.hidden{display:none!important}
+
+/* Missing letters */
+.letterWord{display:flex;align-items:flex-end;justify-content:center;gap:6px;flex-wrap:wrap;margin:14px 0 18px}
+.letterCell{width:54px;height:62px;border-bottom:4px solid var(--ink);display:flex;align-items:center;justify-content:center;font-size:38px;font-weight:900}
+.letterCell.slot{border:2px dashed var(--line);border-bottom:4px solid var(--ink);border-radius:10px;background:#fff}
+.letterCell.filled{border-color:var(--good);background:#e6f0e5}
+.letterTray{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+.letterChip{width:52px;height:52px;border:2px solid var(--line);border-radius:14px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;user-select:none;transition:background .7s,border-color .7s,transform .15s}
+.letterChip.correctHint{background:color-mix(in srgb,#82b787 var(--hint,0%),#fff);border-color:color-mix(in srgb,#4f7a56 var(--hint,0%),var(--line))}
+.letterChip.dragging{opacity:.5;transform:scale(.95)} .letterChip.used{opacity:.2;pointer-events:none}
+.wordCard{display:inline-flex;align-items:center;justify-content:center;min-width:130px;min-height:58px;padding:10px 18px;border:2px solid var(--good);background:#e7f0e5;border-radius:16px;font-size:30px;font-weight:900;cursor:grab;user-select:none}
+.wordCard.dragging{opacity:.55}
+.transferHint{text-align:center;color:var(--muted);margin-top:12px;font-weight:800}
+
+/* Spinner */
+.spinnerWrap{width:100%;max-width:620px;margin:auto}
+.spinner{width:100%;aspect-ratio:1;position:relative;margin:auto;border-radius:50%;border:2px solid var(--line);background:radial-gradient(circle,#fff 0 15%,#f5efe4 16% 100%)}
+.center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;background:var(--ink);z-index:8}
+.hand{position:absolute;left:50%;top:50%;height:7px;transform-origin:0 50%;border-radius:999px;z-index:6}
+.hand.owner{width:43%;background:var(--accent)}
+.hand.item{width:31%;background:var(--accent2)}
+.hand:after{content:"";position:absolute;right:-10px;top:-7px;border-left:18px solid var(--ink);border-top:10px solid transparent;border-bottom:10px solid transparent}
+.ringItem{position:absolute;transform:translate(-50%,-50%);text-align:center;font-weight:900;font-size:13px;line-height:1.1;pointer-events:none}
+.ringItem .e{font-size:30px;display:block;margin-bottom:2px}
+.ringItem.inner .e{font-size:26px}
+.ringItem.selected{background:#fff;border:2px solid var(--good);border-radius:14px;padding:5px}
+.spinResult{text-align:center;margin-top:14px;font-size:19px;font-weight:900}
+
+
+/* Stage 9 */
+.hockeyArena{position:relative;width:100%;min-height:390px;border-radius:20px;overflow:hidden;background:linear-gradient(#edf3ef 0 70%,#d8e3dc 70% 100%);border:2px solid #c9d4cc}
+.hockeyTopLabel{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:12;background:rgba(255,253,248,.94);border:1px solid var(--line);border-radius:999px;padding:8px 15px;font-weight:900}
+.shapeCover{position:absolute;left:50%;top:29%;transform:translate(-50%,-50%);z-index:5;width:154px;height:116px;background:#a88f76;border:4px solid #806b57}
+.shapeCover.circle{border-radius:50%;width:132px;height:132px}
+.shapeCover.rect{border-radius:16px}
+.shapeCover.triangle{width:0;height:0;background:transparent;border-left:82px solid transparent;border-right:82px solid transparent;border-bottom:132px solid #a88f76;border-top:0}
+.shapeCover.diamond{width:112px;height:112px;transform:translate(-50%,-50%) rotate(45deg)}
+.shapeCover.hex{width:150px;height:112px;clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%)}
+.hiddenPoss{position:absolute;left:50%;top:31%;transform:translate(-50%,-50%);z-index:4;min-width:132px;padding:12px 18px;border-radius:16px;border:3px solid var(--good);background:#e6f0e5;font-size:42px;font-weight:900;text-align:center}
+.hiddenPoss.peekLeft{transform:translate(-96%,-50%)}
+.hiddenPoss.peekRight{transform:translate(-4%,-50%)}
+.hiddenPoss.peekUp{transform:translate(-50%,-105%)}
+.hiddenPoss.hit{animation:hockeyTargetHit .38s ease-out forwards}
+@keyframes hockeyTargetHit{0%{scale:1}35%{scale:1.16}100%{scale:.82;opacity:0}}
+.puckStart{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);z-index:10;width:92px;height:92px;border-radius:50%;border:4px solid #4f6d55;background:radial-gradient(circle at 35% 28%,#f7fbf6,#b8cfb6);display:flex;align-items:center;justify-content:center;font-size:25px;font-weight:900;user-select:none;touch-action:none;cursor:grab}
+.puckStart.ready{box-shadow:0 0 0 6px rgba(112,139,104,.18)}
+.hockeyRack{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:14px}
+.hockeyBase{min-height:56px;border:2px solid var(--line);background:#fff;border-radius:14px;font-size:20px;font-weight:900;padding:8px}
+.hockeyBase.selected{border-color:var(--accent);background:#e6efe3}
+.hockeyBase.done{opacity:.22;pointer-events:none;text-decoration:line-through}
+.hockeyPair{display:inline-flex;gap:10px;align-items:center;justify-content:center;padding:10px 16px;border-radius:999px;border:2px solid var(--good);background:#e7f0e5;font-size:26px;font-weight:900}
+@media(max-width:800px){.hockeyArena{min-height:340px}.hockeyRack{grid-template-columns:repeat(2,minmax(0,1fr))}.hiddenPoss{font-size:34px;min-width:110px}.puckStart{width:82px;height:82px;font-size:22px}}
+
+.partialSentence{font-size:32px;font-weight:900;text-align:center;line-height:1.4}
+.fadePoss{display:inline-block;opacity:1;transition:opacity 4.4s linear}
+.fadePoss.fade{opacity:0}
+.range{position:relative;width:100%;min-height:360px;border-radius:18px;overflow:hidden;background:linear-gradient(#eaf2ec 0 60%,#d9ccb4 60% 100%);border:1px solid var(--line)}
+.rangeSky{position:absolute;inset:0 0 38% 0;background:linear-gradient(#eff6f1,#e2ece4)}
+.cloud{position:absolute;background:rgba(255,255,255,.88);border:1px solid rgba(210,210,210,.5);border-radius:999px;height:28px;width:78px;z-index:1}
+.cloud:before,.cloud:after{content:"";position:absolute;background:inherit;border:inherit;border-radius:999px}
+.cloud:before{width:34px;height:34px;left:12px;top:-12px}
+.cloud:after{width:42px;height:42px;right:10px;top:-18px}
+.cloud.c1{left:11%;top:12%}.cloud.c2{right:13%;top:18%}
+.bush{position:absolute;bottom:10%;width:92px;height:38px;background:#9db68f;border:3px solid #7f9972;border-radius:999px 999px 0 0;z-index:2}
+.bush:before,.bush:after{content:"";position:absolute;bottom:12px;width:38px;height:32px;border-radius:50%;background:#a8c097;border:3px solid #7f9972}
+.bush:before{left:8px}.bush:after{right:8px}
+.bush.b1{left:4%}.bush.b2{right:4%}
+.obstacle{position:absolute;background:linear-gradient(#ceb28e,#b79670);border:3px solid #8c785f;border-radius:12px 12px 8px 8px;box-shadow:inset 0 0 0 3px rgba(255,255,255,.14),0 10px 20px rgba(0,0,0,.05);z-index:4}
+.obstacle.o1{left:8%;bottom:12%;width:22%;height:44%}
+.obstacle.o2{left:39%;bottom:12%;width:22%;height:36%}
+.obstacle.o3{right:8%;bottom:12%;width:22%;height:48%}
+.obstacle:before{content:"";position:absolute;left:-7%;right:-7%;top:-24%;height:28%;background:linear-gradient(#a96c5a,#935848);clip-path:polygon(50% 0,100% 100%,0 100%);border:3px solid #7f4c3e;border-bottom:none;border-radius:8px 8px 0 0}
+.obstacle:after{content:"";position:absolute;left:50%;bottom:10%;transform:translateX(-50%);width:26%;height:26%;background:#8b6549;border:3px solid #6f503a;border-radius:8px 8px 0 0;box-shadow:-105px -12px 0 -6px #d8ecf5, -105px -12px 0 -3px #6f503a, 105px -12px 0 -6px #d8ecf5, 105px -12px 0 -3px #6f503a}
+.peekTarget{position:absolute;z-index:3;min-width:108px;padding:10px 12px;border:2px solid var(--good);border-radius:16px;background:#e7f0e5;font-size:40px;font-weight:900;text-align:center;user-select:none;cursor:crosshair;box-shadow:0 8px 18px rgba(0,0,0,.08);transition:transform 2.2s ease,opacity .25s,border-color .2s,background .2s}
+.peekTarget.hiddenBehind{transform:translateX(-10%) translateY(76%);opacity:.96}
+.peekTarget.visiblePeek{transform:translateX(-66%) translateY(10%);opacity:1}
+.peekTarget.hitTarget{animation:targetPop .34s ease-out forwards}
+@keyframes targetPop{0%{transform:translateX(-66%) translateY(10%) scale(1)}35%{transform:translateX(-66%) translateY(2%) scale(1.14)}100%{transform:translateX(-66%) translateY(-16%) scale(.9);opacity:0}}
+.cannonRack{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:14px}
+.cannon{min-height:78px;border:2px solid var(--line);background:linear-gradient(#fff,#f5f1e7);border-radius:15px;font-weight:900;font-size:20px;padding:8px;box-shadow:0 5px 12px rgba(0,0,0,.04)}
+.cannon .barrel{display:block;font-size:30px;margin-bottom:3px}
+.cannon.selected{border-color:var(--accent);background:#e7efe4;box-shadow:inset 0 0 0 3px rgba(112,139,104,.12),0 6px 12px rgba(0,0,0,.05)}
+.crosshair{position:absolute;width:42px;height:42px;border:3px solid #8f3f35;border-radius:50%;pointer-events:none;z-index:8;transform:translate(-50%,-50%);display:none}
+.crosshair:before,.crosshair:after{content:"";position:absolute;background:#8f3f35}
+.crosshair:before{width:2px;height:56px;left:17px;top:-10px}
+.crosshair:after{height:2px;width:56px;top:17px;left:-10px}
+.rangeMsg{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:10;background:rgba(255,253,248,.92);border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-weight:900}
+.pairToast{display:inline-flex;gap:10px;align-items:center;justify-content:center;margin-top:10px;padding:10px 16px;border-radius:999px;border:2px solid var(--good);background:#e7f0e5;font-size:24px;font-weight:900;opacity:1;transition:opacity .45s,transform .45s}
+.pairToast.fadeAway{opacity:0;transform:translateY(-8px) scale(.94)}
+@media(max-width:800px){.cannonRack{grid-template-columns:repeat(2,minmax(0,1fr))}.range{min-height:320px}.peekTarget{font-size:30px;min-width:88px;padding:10px 10px}.cloud{transform:scale(.85)}}
+
+@media(max-width:800px){.grid{grid-template-columns:1fr}.pairgrid,.basegrid{grid-template-columns:repeat(2,minmax(0,1fr))}.choices{grid-template-columns:1fr}.wordpool{grid-template-columns:repeat(2,minmax(0,1fr))}.scene{min-height:300px}.ringItem{font-size:11px}.ringItem .e{font-size:24px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div><div class="title">Possessive Mission</div><div class="sub">my · your · his · her · its · our · their</div></div>
+    <div class="pills"><div class="pill">⭐ <span id="score">0</span></div><div class="pill">✓ <span id="correct">0</span></div><div class="pill">Stage <span id="stageNo">1</span>/9</div></div>
+  </div>
+  <div class="progress"><div class="bar" id="bar"></div></div>
+  <div class="stageNav" id="stageNav">
+    <span class="stageNavLabel">TEST NAV:</span>
+    <button type="button" class="stageJump" data-stage="1">1</button>
+    <button type="button" class="stageJump" data-stage="2">2</button>
+    <button type="button" class="stageJump" data-stage="3">3</button>
+    <button type="button" class="stageJump" data-stage="4">4</button>
+    <button type="button" class="stageJump" data-stage="5">5</button>
+    <button type="button" class="stageJump" data-stage="6">6</button>
+    <button type="button" class="stageJump" data-stage="7">7</button>
+    <button type="button" class="stageJump" data-stage="8">8</button>
+    <button type="button" class="stageJump" data-stage="9">9</button>
+  </div>
+
+  <div class="grid">
+    <section class="card"><div class="scene" id="scene"></div></section>
+    <section class="card">
+      <div class="stageTag" id="stageTag">STAGE 1</div>
+      <div class="stageTitle" id="stageTitle"></div>
+      <div class="prompt" id="prompt"></div>
+      <div class="help" id="help"></div>
+      <div id="work"></div>
+      <div class="feedback" id="feedback">Ready.</div>
+      <div class="controls">
+        <button class="btn" id="hearBtn">🔊 Hear</button>
+        <button class="btn secondary hidden" id="speakBtn">🎤 Speak</button>
+        <button class="btn hidden" id="clearBtn">Clear</button>
+        <button class="btn primary" id="nextBtn" disabled>Next →</button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+(()=>{
+const PAIRS=[['I','my'],['you','your'],['he','his'],['she','her'],['it','its'],['we','our'],['they','their']];
+const OWNERS=[
+ {name:'I',pron:'I',poss:'my',emoji:'🧒'},
+ {name:'Anna',pron:'she',poss:'her',emoji:'👧'},
+ {name:'Ben',pron:'he',poss:'his',emoji:'👦'},
+ {name:'Dad',pron:'he',poss:'his',emoji:'👨'},
+ {name:'Mum',pron:'she',poss:'her',emoji:'👩'},
+ {name:'The dog',pron:'it',poss:'its',emoji:'🐶'},
+ {name:'The cat',pron:'it',poss:'its',emoji:'🐱'},
+ {name:'Ben and Anna',pron:'they',poss:'their',emoji:'👦👧'},
+ {name:'We',pron:'we',poss:'our',emoji:'🧒🧒'},
+ {name:'You',pron:'you',poss:'your',emoji:'🙂'}
+];
+const ITEMS=[
+ {name:'ball',emoji:'⚽'},{name:'book',emoji:'📘'},{name:'schoolbag',emoji:'🎒'},{name:'bike',emoji:'🚲'},
+ {name:'phone',emoji:'📱'},{name:'pencil',emoji:'✏️'},{name:'toy',emoji:'🧸'},{name:'guitar',emoji:'🎸'},
+ {name:'cake',emoji:'🎂'},{name:'game',emoji:'🎮'},{name:'hat',emoji:'🧢'},{name:'cup',emoji:'🥤'}
+];
+
+const $=id=>document.getElementById(id);
+const scene=$('scene'),work=$('work'),prompt=$('prompt'),help=$('help'),feedback=$('feedback'),
+      nextBtn=$('nextBtn'),speakBtn=$('speakBtn'),clearBtn=$('clearBtn');
+
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+const shuffle=a=>[...a].sort(()=>Math.random()-.5);
+let idx=0,score=0,correct=0,locked=false,currentSay='',stageState={};
+let fadeTimer=null, hintTimer=null, spinTimer=null, recognition=null;
+let ownerDeck=[];
+function refillOwnerDeck(){
+  ownerDeck=shuffle([
+    OWNERS.find(x=>x.pron==='I'),
+    OWNERS.find(x=>x.pron==='you'),
+    OWNERS.find(x=>x.pron==='he'),
+    OWNERS.find(x=>x.pron==='she'),
+    OWNERS.find(x=>x.pron==='it'),
+    OWNERS.find(x=>x.pron==='we'),
+    OWNERS.find(x=>x.pron==='they')
+  ].filter(Boolean));
+}
+function balancedOwner(){
+  if(!ownerDeck.length)refillOwnerDeck();
+  return ownerDeck.shift();
+}
+
+
+const tasks=[
+ {stage:1,type:'pair',p:'I',a:'my'},{stage:1,type:'pair',p:'she',a:'her'},{stage:1,type:'pair',p:'we',a:'our'},{stage:1,type:'pair',p:'they',a:'their'},
+ {stage:2,type:'picture'},{stage:2,type:'picture'},{stage:2,type:'picture'},{stage:2,type:'picture'},
+ {stage:3,type:'letterDrag',word:'their',base:'they'},{stage:3,type:'letterDrag',word:'your',base:'you'},{stage:3,type:'letterDrag',word:'his',base:'he'},
+ {stage:4,type:'buildSpeak'},{stage:4,type:'buildSpeak'},{stage:4,type:'buildSpeak'},
+ {stage:5,type:'fadeSpeak'},{stage:5,type:'fadeSpeak'},{stage:5,type:'fadeSpeak'},
+ {stage:6,type:'choiceRepair'},{stage:6,type:'choiceRepair'},
+ {stage:7,type:'spinnerFinal'},{stage:7,type:'spinnerFinal'},{stage:7,type:'spinnerFinal'},
+ {stage:8,type:'cannon'},
+ {stage:9,type:'airHockey'}
+];
+
+const titles={
+ 1:'Quick pairs',
+ 2:'Picture choice',
+ 3:'Missing letters + match',
+ 4:'Build it and say it',
+ 5:'Say it before it disappears',
+ 6:'Choose, then repair the word',
+ 7:'Double-spinner final',
+ 8:'Pronoun cannon range',
+ 9:'Pronoun air hockey'
+};
+
+function say(t){
+ currentSay=t;
+ if(!('speechSynthesis' in window)) return;
+ speechSynthesis.cancel();
+ const u=new SpeechSynthesisUtterance(t);
+ u.lang='en-US'; u.rate=.84;
+ speechSynthesis.speak(u);
+}
+function scoreForStage(st){return st<=2?1:st<=4?2:3}
+function success(msg){
+ if(locked) return;
+ locked=true; correct++; score+=scoreForStage(tasks[idx].stage);
+ $('score').textContent=score;$('correct').textContent=correct;
+ feedback.innerHTML='✅ '+msg;nextBtn.disabled=false;
+}
+function clearTimers(){
+ clearTimeout(fadeTimer);clearInterval(hintTimer);clearInterval(spinTimer);
+ fadeTimer=hintTimer=spinTimer=null;
+ try{if(recognition)recognition.abort()}catch(e){}
+ recognition=null;
+}
+function renderPairs(){
+ scene.innerHTML='<div class="pairgrid">'+PAIRS.map(x=>`<div class="pair"><b>${x[0]}</b><div>↓</div><b>${x[1]}</b></div>`).join('')+'</div>';
+}
+function renderBases(target){
+ scene.innerHTML='<div class="basegrid">'+PAIRS.map(([base])=>`<div class="baseCard" data-base="${base}">${base}</div>`).join('')+'</div>';
+}
+function ownerItem(){
+ const o=balancedOwner(), it=rnd(ITEMS);
+ return {o,it,sentence:`This is ${o.poss} ${it.name}.`};
+}
+function visual(o,it){
+ scene.innerHTML=`<div class="people">
+   <div class="person"><div class="emoji">${o.emoji}</div><div class="name">${o.name}</div></div>
+   <div class="arrowGlyph">➜</div>
+   <div><div class="obj">${it.emoji}</div><div class="name">${it.name}</div></div>
+ </div>`;
+}
+function buttons(opts,answer,onGood){
+ work.innerHTML='<div class="choices"></div>';
+ const box=work.firstChild;
+ shuffle(opts).forEach(x=>{
+   const b=document.createElement('button');b.className='choice';b.textContent=x;
+   b.addEventListener('click',()=>{
+     if(locked)return;
+     if(x===answer){
+       b.classList.add('good');[...box.children].forEach(z=>z.disabled=true);onGood&&onGood();
+     }else{
+       b.classList.add('bad');b.disabled=true;feedback.textContent='Not this one. Try again.';say('Try again.');
+     }
+   });box.appendChild(b);
+ });
+}
+function normalize(s){
+ return s.toLowerCase()
+   .replace(/[.,!?]/g,'')
+   .replace(/\bschool\s+bag\b/g,'schoolbag')
+   .replace(/\s+/g,' ')
+   .trim()
+}
+function setupSpeech(target,onSuccess){
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!SR){
+   speakBtn.disabled=true;speakBtn.textContent='🎤 Speech unavailable';
+   feedback.textContent='Speech recognition is not available in this browser.';
+   return;
+ }
+ speakBtn.disabled=false;speakBtn.textContent='🎤 Speak';
+ const start=()=>{
+   try{if(recognition)recognition.abort()}catch(e){}
+   recognition=new SR();recognition.lang='en-US';recognition.interimResults=false;recognition.maxAlternatives=3;
+   feedback.textContent='🎤 Listening...';
+   recognition.onresult=e=>{
+     const alts=[...e.results[0]].map(r=>normalize(r.transcript)); const want=normalize(target);
+     if(alts.some(x=>x===want || x.includes(want))){
+       feedback.innerHTML=`✅ I heard: <b>${target}</b>`; onSuccess();
+     }else{
+       feedback.textContent='I heard: '+alts[0]+' — try the full sentence again.';
+     }
+   };
+   recognition.onerror=()=>feedback.textContent='I could not hear the full sentence. Try again.';
+   recognition.start();
+ };
+ speakBtn.onclick=start;
+ return start;
+}
+function buildSentence(o,it,autoMic=true){
+ const target=`This is ${o.poss} ${it.name}.`;
+ stageState={o,it,sentence:target};
+ const correct=['This','is',o.poss,it.name+'.'];
+ const traps=shuffle(PAIRS.map(x=>x[1]).filter(x=>x!==o.poss)).slice(0,2);
+ const pool=shuffle([...correct,...traps]);
+ let built=[], usedIdx=new Set();
+
+ work.innerHTML='<div class="sentenceBuild" id="sentenceBuild"></div><div class="wordpool" id="wordpool"></div>';
+ clearBtn.classList.remove('hidden');
+
+ const draw=()=>{
+   $('sentenceBuild').innerHTML=built.map(x=>`<span class="token">${x.word}</span>`).join('');
+   $('wordpool').innerHTML='';
+   pool.forEach((w,j)=>{
+     const b=document.createElement('button');b.className='word'+(usedIdx.has(j)?' selected':'');b.textContent=w;b.disabled=usedIdx.has(j);
+     b.onclick=()=>{if(locked)return;built.push({word:w,idx:j});usedIdx.add(j);draw();check()};
+     $('wordpool').appendChild(b);
+   });
+ };
+ const reset=()=>{built=[];usedIdx.clear();locked=false;nextBtn.disabled=true;feedback.textContent='Build the sentence again.';draw()};
+ clearBtn.onclick=reset;
+
+ const check=()=>{
+   if(built.length<4)return;
+   const got=built.map(x=>x.word).join(' ');
+   const want=correct.join(' ');
+   if(got===want){
+     locked=true;
+     clearBtn.classList.add('hidden');
+     prompt.textContent='Remember it and say it';
+     help.textContent='The sentence is disappearing. Listen, then repeat the full sentence.';
+     work.innerHTML=`<div class="fadeText" id="buildFade">${target}</div>`;
+     speakBtn.classList.remove('hidden');
+     currentSay=target;
+     feedback.textContent='✅ Correct. Listen...';
+     const startMic=setupSpeech(target,()=>successAfterSpeech(target));
+     say(target);
+     setTimeout(()=>{const el=$('buildFade');if(el)el.classList.add('fade')},650);
+     if(autoMic) setTimeout(()=>{try{startMic()}catch(e){}},1350);
+   }else if(built.length>=4){
+     feedback.textContent='Not quite. Clear and try again.';
+   }
+ };
+ draw();
+}
+function successAfterSpeech(target){
+ if(!nextBtn.disabled)return;
+ locked=false;success(`<b>${target}</b>`);
+}
+
+/* Stage 3: drag letters into gaps, then drag completed word to its base pronoun. */
+function makeLetterTask(word,base){
+ renderBases(base);
+ const letters=[...word];
+ const missingCount=Math.min(3,Math.max(2,Math.ceil(word.length/2)));
+ const missingIdx=shuffle(letters.map((_,i)=>i)).slice(0,missingCount).sort((a,b)=>a-b);
+ const missingSet=new Set(missingIdx);
+ const needed=missingIdx.map(i=>letters[i]);
+ const alphabet='abcdefghijklmnopqrstuvwxyz'.split('');
+ const wrong=[];
+ while(wrong.length<2){
+   const c=rnd(alphabet);
+   if(!needed.includes(c) && !wrong.includes(c))wrong.push(c);
+ }
+ const chips=shuffle([...needed,...wrong]).map((c,i)=>({id:'c'+i,char:c,needed:needed.includes(c),used:false}));
+
+ prompt.textContent='Complete the word';
+ help.textContent='Drag the missing letters into the gaps. The useful letters become greener if you need more time.';
+ feedback.textContent='Fill every gap. Then match the completed word to its base pronoun.';
+ work.innerHTML='<div class="letterWord" id="letterWord"></div><div class="letterTray" id="letterTray"></div><div id="transferArea"></div>';
+
+ const wordBox=$('letterWord'), tray=$('letterTray'), transfer=$('transferArea');
+ letters.forEach((c,i)=>{
+   const cell=document.createElement('div');
+   cell.className='letterCell'+(missingSet.has(i)?' slot':'');
+   cell.dataset.index=i;
+   cell.textContent=missingSet.has(i)?'':c;
+   if(missingSet.has(i)){
+     cell.addEventListener('dragover',e=>e.preventDefault());
+     cell.addEventListener('drop',e=>{e.preventDefault();dropLetter(cell,e.dataTransfer.getData('text/plain'))});
+   }
+   wordBox.appendChild(cell);
+ });
+ function drawChips(){
+   tray.innerHTML='';
+   chips.forEach(ch=>{
+     const b=document.createElement('button');
+     b.type='button';b.className='letterChip'+(ch.needed?' correctHint':'')+(ch.used?' used':'');
+     b.textContent=ch.char;b.draggable=!ch.used;b.dataset.id=ch.id;b.style.setProperty('--hint','0%');
+     b.addEventListener('dragstart',e=>{b.classList.add('dragging');e.dataTransfer.setData('text/plain',ch.id)});
+     b.addEventListener('dragend',()=>b.classList.remove('dragging'));
+     b.addEventListener('click',()=>{ if(ch.used)return; const empty=[...wordBox.querySelectorAll('.slot')].find(x=>!x.textContent); if(empty)dropLetter(empty,ch.id) });
+     tray.appendChild(b);
+   });
+ }
+ function dropLetter(cell,id){
+   if(cell.textContent)return;
+   const ch=chips.find(x=>x.id===id);if(!ch||ch.used)return;
+   const pos=Number(cell.dataset.index);
+   if(ch.char===letters[pos]){
+     cell.textContent=ch.char;cell.classList.add('filled');ch.used=true;drawChips();checkComplete();
+   }else{
+     feedback.textContent='That letter does not fit here. Try another gap.';
+     const chip=tray.querySelector(`[data-id="${id}"]`); if(chip){chip.animate([{transform:'translateX(-4px)'},{transform:'translateX(4px)'},{transform:'translateX(0)'}],{duration:220})}
+   }
+ }
+ let hint=0;
+ hintTimer=setInterval(()=>{
+   hint=Math.min(88,hint+8);
+   tray.querySelectorAll('.correctHint:not(.used)').forEach(el=>el.style.setProperty('--hint',hint+'%'));
+ },1200);
+
+ drawChips();
+
+ function checkComplete(){
+   const got=[...wordBox.children].map(x=>x.textContent).join('');
+   if(got!==word)return;
+   clearInterval(hintTimer);hintTimer=null;
+   prompt.textContent='Now match the word';
+   help.textContent=`Drag “${word}” onto the correct base pronoun on the left.`;
+   tray.innerHTML='';
+   transfer.innerHTML=`<div class="transferHint">Drag this card to the matching pronoun:</div><div style="text-align:center;margin-top:10px"><div class="wordCard" id="wordCard" draggable="true">${word}</div></div>`;
+   currentSay=word;
+   say(word);
+   const card=$('wordCard');let selected=false;
+   card.addEventListener('dragstart',e=>{card.classList.add('dragging');e.dataTransfer.setData('text/plain','wordcard')});
+   card.addEventListener('dragend',()=>card.classList.remove('dragging'));
+   card.addEventListener('click',()=>{selected=true;card.style.outline='4px solid #cfe0cc';feedback.textContent='Now click the matching base pronoun on the left.'});
+   scene.querySelectorAll('.baseCard').forEach(target=>{
+     target.addEventListener('dragover',e=>e.preventDefault());
+     target.addEventListener('drop',e=>{e.preventDefault();if(e.dataTransfer.getData('text/plain')==='wordcard')matchBase(target)});
+     target.addEventListener('click',()=>{if(selected)matchBase(target)});
+   });
+ }
+ function matchBase(target){
+   if(target.dataset.base===base){
+     target.classList.add('hit');
+     locked=true;
+     nextBtn.disabled=true;
+     prompt.textContent='Now say the pair';
+     help.textContent=`Repeat: ${base} — ${word}`;
+     feedback.innerHTML=`✅ Match: <b>${base} → ${word}</b>. Now repeat it aloud.`;
+     currentSay=`${base}. ${word}.`;
+     speakBtn.classList.remove('hidden');
+     const card=$('wordCard');
+     setTimeout(()=>{
+       target.classList.add('done');
+       if(card){card.style.transition='opacity .4s,transform .4s';card.style.opacity='0';card.style.transform='scale(.85)'}
+     },350);
+     const startMic=setupSpeech(`${base} ${word}`,()=>{
+       locked=false;
+       success(`<b>${base} → ${word}</b>`);
+     });
+     say(`${base}. ${word}.`);
+     setTimeout(()=>{try{startMic()}catch(e){}},950);
+   }else{feedback.textContent='Not this pronoun. Try again.'}
+ }
+ currentSay=word;
+}
+
+/* Stage 6: choose correct possessive, then repair it with click/drag letters. */
+function choiceRepair(){
+ const {o,it}=ownerItem();visual(o,it);stageState={o,it};
+ prompt.textContent='Choose the correct possessive';
+ help.textContent='After that, some letters will disappear and you will rebuild the same word.';
+ const opts=[o.poss,...shuffle(PAIRS.map(x=>x[1]).filter(x=>x!==o.poss)).slice(0,2)];
+ buttons(opts,o.poss,()=>{
+   locked=false;
+   feedback.textContent='Correct. Now rebuild the word.';
+   makeRepairWord(o.poss,()=>{
+     locked=true;
+     const phrase=`${o.poss} ${it.name}`;
+     currentSay=phrase;
+     prompt.textContent='Remember the phrase and say it';
+     help.textContent='This one disappears faster.';
+     work.innerHTML=`<div class="fadeText" id="fastFade" style="transition-duration:2.2s">${phrase}</div>`;
+     speakBtn.classList.remove('hidden');
+     feedback.innerHTML=`✅ Word rebuilt. Listen to: <b>${phrase}</b>`;
+     const startMic=setupSpeech(phrase,()=>{
+       locked=false;
+       success(`<b>${phrase}</b>`);
+     });
+     say(phrase);
+     setTimeout(()=>{const el=$('fastFade');if(el)el.classList.add('fade')},350);
+     setTimeout(()=>{try{startMic()}catch(e){}},1000);
+   });
+ });
+ currentSay=`${o.poss} ${it.name}`;
+}
+function makeRepairWord(word,done){
+ const letters=[...word], n=Math.min(3,Math.max(2,Math.ceil(word.length/2)));
+ const miss=shuffle(letters.map((_,i)=>i)).slice(0,n).sort((a,b)=>a-b);
+ const needed=miss.map(i=>letters[i]), wrong=[];
+ const alphabet='abcdefghijklmnopqrstuvwxyz'.split('');
+ while(wrong.length<2){const c=rnd(alphabet);if(!needed.includes(c)&&!wrong.includes(c))wrong.push(c)}
+ work.innerHTML='<div class="letterWord" id="repairWord"></div><div class="letterTray" id="repairTray"></div>';
+ const wb=$('repairWord'),tr=$('repairTray');let used=[];
+ letters.forEach((c,i)=>{
+   const d=document.createElement('div');d.className='letterCell'+(miss.includes(i)?' slot':'');d.dataset.index=i;d.textContent=miss.includes(i)?'':c;
+   d.ondragover=e=>e.preventDefault();d.ondrop=e=>{e.preventDefault();place(d,e.dataTransfer.getData('text/plain'))};wb.appendChild(d);
+ });
+ const chips=shuffle([...needed,...wrong]).map((c,i)=>({id:'r'+i,char:c,used:false}));
+ function draw(){
+   tr.innerHTML='';chips.forEach(ch=>{const b=document.createElement('button');b.className='letterChip'+(ch.used?' used':'');b.textContent=ch.char;b.draggable=!ch.used;
+     b.ondragstart=e=>e.dataTransfer.setData('text/plain',ch.id);b.onclick=()=>{const slot=[...wb.querySelectorAll('.slot')].find(x=>!x.textContent);if(slot)place(slot,ch.id)};tr.appendChild(b)});
+ }
+ function place(slot,id){
+   if(slot.textContent)return;const ch=chips.find(x=>x.id===id);if(!ch||ch.used)return;const i=Number(slot.dataset.index);
+   if(ch.char===letters[i]){slot.textContent=ch.char;slot.classList.add('filled');ch.used=true;draw();if([...wb.children].map(x=>x.textContent).join('')===word)done()}
+   else feedback.textContent='Wrong letter for this gap.';
+ }
+ draw();
+}
+
+/* Stage 7: long owner hand first; snap exactly to one owner. Then short item hand starts and snaps exactly. */
+function spinnerFinal(){
+ const owners=shuffle(OWNERS).slice(0,8), items=shuffle(ITEMS).slice(0,8);
+ stageState={owners,items,ownerIdx:null,itemIdx:null,phase:'owner',a1:0,a2:0};
+ prompt.textContent='Stop the long hand: WHO?';
+ help.textContent='Only the green hand is moving now.';
+ feedback.textContent='Press STOP WHO.';
+ scene.innerHTML=`<div class="spinnerWrap"><div class="spinner" id="spinner"><div class="center"></div>
+   <div class="hand owner" id="ownerHand"></div><div class="hand item hidden" id="itemHand"></div>
+ </div><div class="spinResult" id="spinResult">WHO: ? &nbsp; | &nbsp; OBJECT: ?</div></div>`;
+ const sp=$('spinner');
+ owners.forEach((o,k)=>{
+   const a=(k/owners.length)*Math.PI*2-Math.PI/2;
+   const d=document.createElement('div');d.className='ringItem ownerLabel';d.dataset.idx=k;
+   d.style.left=(50+Math.cos(a)*43)+'%';d.style.top=(50+Math.sin(a)*43)+'%';
+   d.innerHTML=`<span class="e">${o.emoji}</span>${o.name}`;sp.appendChild(d);
+ });
+ items.forEach((it,k)=>{
+   const a=(k/items.length)*Math.PI*2-Math.PI/2;
+   const d=document.createElement('div');d.className='ringItem inner itemLabel';d.dataset.idx=k;
+   d.style.left=(50+Math.cos(a)*29)+'%';d.style.top=(50+Math.sin(a)*29)+'%';
+   d.innerHTML=`<span class="e">${it.emoji}</span>${it.name}`;d.style.opacity='.25';sp.appendChild(d);
+ });
+ work.innerHTML='<button class="btn primary" id="stopSpin">STOP WHO</button>';
+ const stop=$('stopSpin');
+ startOwnerSpin();
+ stop.onclick=handleStop;
+ currentSay='Stop the spinner.';
+
+ function angleForIndex(i,n){return (i*360/n)-90}
+ function nearestIndex(angle,n){
+   const norm=((angle+90)%360+360)%360;
+   return Math.round(norm/(360/n))%n;
+ }
+ function startOwnerSpin(){
+   let a=0;spinTimer=setInterval(()=>{a=(a+10)%360;stageState.a1=a;$('ownerHand').style.transform=`rotate(${a}deg)`},38);
+ }
+ function startItemSpin(){
+   let a=110;spinTimer=setInterval(()=>{a=(a+13)%360;stageState.a2=a;$('itemHand').style.transform=`rotate(${a}deg)`},38);
+ }
+ function handleStop(){
+   if(stageState.phase==='owner'){
+     clearInterval(spinTimer);spinTimer=null;
+     const i=nearestIndex(stageState.a1,owners.length);stageState.ownerIdx=i;
+     const exact=angleForIndex(i,owners.length);$('ownerHand').style.transform=`rotate(${exact}deg)`;
+     scene.querySelector(`.ownerLabel[data-idx="${i}"]`).classList.add('selected');
+     $('spinResult').innerHTML=`WHO: <b>${owners[i].name}</b> &nbsp; | &nbsp; OBJECT: ?`;
+     stageState.phase='item';prompt.textContent='Now stop the short hand: OBJECT';help.textContent='The green hand is fixed. Only the orange hand is moving.';
+     feedback.textContent=`WHO: ${owners[i].name}`;$('itemHand').classList.remove('hidden');
+     scene.querySelectorAll('.itemLabel').forEach(x=>x.style.opacity='1');
+     stop.textContent='STOP OBJECT';startItemSpin();
+   }else if(stageState.phase==='item'){
+     clearInterval(spinTimer);spinTimer=null;
+     const i=nearestIndex(stageState.a2,items.length);stageState.itemIdx=i;
+     const exact=angleForIndex(i,items.length);$('itemHand').style.transform=`rotate(${exact}deg)`;
+     scene.querySelector(`.itemLabel[data-idx="${i}"]`).classList.add('selected');
+     const o=owners[stageState.ownerIdx],it=items[i],sentence=`This is ${o.poss} ${it.name}.`;
+     stageState.phase='build';stageState.sentence=sentence;
+     $('spinResult').innerHTML=`WHO: <b>${o.name}</b> &nbsp; | &nbsp; OBJECT: <b>${it.emoji} ${it.name}</b>`;
+     prompt.textContent='Say the final sentence';
+     help.textContent='Use the letter clues. Say the complete sentence aloud.';
+     stop.remove();
+     showFinalClueAndListen(o,it,sentence);
+   }
+ }
+}
+function clueWord(word){
+ const clean=word.replace(/[.]/g,'');
+ if(clean.length<=2)return clean[0]+'_';
+ if(clean.length<=4)return clean.slice(0,1)+'_'.repeat(clean.length-1);
+ return clean.slice(0,2)+'_'.repeat(clean.length-2);
+}
+function showFinalClueAndListen(o,it,sentence){
+ stageState.phase='speak';
+ locked=true;
+ clearBtn.classList.add('hidden');
+ const clue=[clueWord('This'),clueWord('is'),clueWord(o.poss),clueWord(it.name)+'.'].join(' ');
+ work.innerHTML=`<div class="answerLine" style="text-align:center;font-size:34px;letter-spacing:.08em">${clue}</div>`;
+ feedback.innerHTML='🎤 Say the complete sentence now.';
+ speakBtn.classList.remove('hidden');
+ currentSay=sentence;
+ const startMic=setupSpeech(sentence,()=>{
+   locked=false;
+   successAfterSpeech(sentence);
+ });
+ // In the final stage we do NOT speak the answer first.
+ setTimeout(()=>{try{startMic()}catch(e){}},450);
+}
+
+
+/* Stage 8: choose a base-pronoun cannon, aim, and shoot the matching possessive peeking from cover. */
+function cannonStage(){
+ clearTimers();
+ locked=false;nextBtn.disabled=true;speakBtn.classList.add('hidden');clearBtn.classList.add('hidden');
+ prompt.textContent='Choose a cannon, then hit its possessive';
+ help.textContent='All targets slowly peek out and stay in the scene. Match and clear them one by one.';
+ feedback.textContent='Choose a pronoun cannon first.';
+
+ const targets=shuffle(PAIRS.map(([base,poss])=>({base,poss})));
+ stageState={phase:'cannon',selectedBase:null,targets,remaining:targets.length};
+
+ scene.innerHTML=`<div class="range" id="range">
+   <div class="rangeSky"></div>
+   <div class="cloud c1"></div><div class="cloud c2"></div>
+   <div class="rangeMsg" id="rangeMsg">Targets are hiding...</div>
+   <div class="bush b1"></div><div class="bush b2"></div>
+   <div class="obstacle o1"></div><div class="obstacle o2"></div><div class="obstacle o3"></div>
+   <div class="crosshair" id="crosshair"></div>
+ </div>`;
+
+ work.innerHTML='<div class="cannonRack" id="cannonRack"></div><div id="pairArea" style="text-align:center;min-height:56px;margin-top:8px"></div>';
+ const rack=$('cannonRack');
+ shuffle(PAIRS.map(([base,poss])=>({base,poss}))).forEach(p=>{
+   const b=document.createElement('button');
+   b.type='button';b.className='cannon';b.dataset.base=p.base;
+   b.innerHTML=`<span class="barrel">💥</span>${p.base}`;
+   b.addEventListener('click',()=>{
+     if(b.classList.contains('gone')) return;
+     rack.querySelectorAll('.cannon').forEach(x=>x.classList.remove('selected'));
+     b.classList.add('selected');
+     stageState.selectedBase=p.base;
+     feedback.textContent=`Cannon selected: ${p.base}. Aim at its possessive target.`;
+   });
+   rack.appendChild(b);
+ });
+
+ const range=$('range');
+ const positions=[
+   {left:'18%',bottom:'44%'}, // house 1 roof side
+   {left:'33%',bottom:'20%'}, // house 1 right side
+   {left:'48%',bottom:'37%'}, // center
+   {left:'61%',bottom:'16%'}, // center right low
+   {left:'77%',bottom:'49%'}, // house 3 upper left
+   {left:'84%',bottom:'20%'}, // house 3 side
+   {left:'8%',bottom:'18%'}   // far left low
+ ];
+ targets.forEach((t,k)=>{
+   const el=document.createElement('div');
+   el.className='peekTarget hiddenBehind';
+   el.dataset.base=t.base;
+   el.dataset.poss=t.poss;
+   el.textContent=t.poss;
+   const pos=positions[k % positions.length];
+   el.style.left=pos.left;
+   el.style.bottom=pos.bottom;
+   el.addEventListener('click',()=>shootTarget(el));
+   range.appendChild(el);
+ });
+
+ range.addEventListener('mousemove',e=>{
+   const r=range.getBoundingClientRect(),c=$('crosshair');
+   c.style.display='block';c.style.left=(e.clientX-r.left)+'px';c.style.top=(e.clientY-r.top)+'px';
+ });
+ range.addEventListener('mouseleave',()=>{$('crosshair').style.display='none'});
+
+ setTimeout(()=>{$('rangeMsg').textContent='Watch the cover...'},450);
+ const targetEls=[...range.querySelectorAll('.peekTarget')];
+ targetEls.forEach((el,k)=>setTimeout(()=>el.classList.add('visiblePeek'),700+k*180));
+ setTimeout(()=>{$('rangeMsg').textContent='Clear all the targets!'},1700);
+
+ function showPair(base,poss){
+   const area=$('pairArea');
+   const toast=document.createElement('div');
+   toast.className='pairToast';
+   toast.innerHTML=`<span>${base}</span><span>→</span><span>${poss}</span>`;
+   area.appendChild(toast);
+   setTimeout(()=>toast.classList.add('fadeAway'),850);
+   setTimeout(()=>toast.remove(),1350);
+ }
+
+ function shootTarget(el){
+   if(el.classList.contains('hitTarget')) return;
+   if(!stageState.selectedBase){
+     feedback.textContent='Choose a cannon first.';
+     return;
+   }
+   if(stageState.selectedBase===el.dataset.base){
+     const base=stageState.selectedBase, poss=el.dataset.poss;
+     el.classList.add('hitTarget');
+     stageState.remaining--;
+     feedback.innerHTML=`🎯 Great shot! <b>${base} → ${poss}</b>`;
+     say(`${base}. ${poss}.`);
+     showPair(base,poss);
+
+     const usedBtn=rack.querySelector(`.cannon[data-base="${base}"]`);
+     if(usedBtn){
+       usedBtn.classList.add('selected','gone');
+       setTimeout(()=>{
+         usedBtn.style.transition='opacity .45s,transform .45s';
+         usedBtn.style.opacity='0';
+         usedBtn.style.transform='scale(.9)';
+         usedBtn.style.pointerEvents='none';
+       },180);
+     }
+
+     stageState.selectedBase=null;
+     setTimeout(()=>{
+       rack.querySelectorAll('.cannon').forEach(x=>x.classList.remove('selected'));
+     },220);
+
+     if(stageState.remaining<=0){
+       setTimeout(()=>{
+         feedback.textContent='All targets cleared!';
+         $('rangeMsg').textContent='Range clear!';
+         locked=false;
+         success('All targets cleared.');
+       },1400);
+     }else{
+       setTimeout(()=>{
+         feedback.textContent=`Good shot. ${stageState.remaining} target${stageState.remaining===1?'':'s'} left. Choose the next cannon.`;
+       },900);
+     }
+   }else{
+     feedback.textContent=`Miss! ${stageState.selectedBase} does not match ${el.dataset.poss}. Choose another cannon.`;
+     range.animate([{transform:'translateX(-3px)'},{transform:'translateX(3px)'},{transform:'translateX(0)'}],{duration:180});
+   }
+ }
+ currentSay='Choose a pronoun cannon and shoot the matching possessive.';
+}
+
+
+function airHockeyStage(){
+ clearTimers();
+ locked=false;nextBtn.disabled=true;speakBtn.classList.add('hidden');clearBtn.classList.add('hidden');
+ $('hearBtn').disabled=true;$('hearBtn').classList.add('hidden');
+
+ const queue=shuffle(PAIRS.map(([base,poss])=>({base,poss})));
+ stageState={queue,current:null,selectedBase:null,wins:0,phase:'choose'};
+ prompt.textContent='Choose a base pronoun';
+ help.textContent='Then swipe its puck upward into the possessive hiding behind the shape.';
+ feedback.textContent='Clear all seven pairs.';
+
+ scene.innerHTML=`<div class="hockeyArena" id="hockeyArena">
+   <div class="hockeyTopLabel" id="hockeyTopLabel"></div>
+   <div class="hiddenPoss" id="hiddenPoss"></div>
+   <div class="shapeCover rect" id="shapeCover"></div>
+   <div class="puckStart hidden" id="puckStart"></div>
+ </div>`;
+ work.innerHTML='<div class="hockeyRack" id="hockeyRack"></div><div id="hockeyPairArea" style="text-align:center;min-height:62px;margin-top:10px"></div>';
+
+ const arena=$('hockeyArena'), rack=$('hockeyRack'), puck=$('puckStart'), hidden=$('hiddenPoss'), cover=$('shapeCover');
+ PAIRS.forEach(([base])=>{
+   const b=document.createElement('button');
+   b.type='button';b.className='hockeyBase';b.dataset.base=base;b.textContent=base;
+   b.onclick=()=>{
+     if(b.classList.contains('done')||stageState.phase!=='choose')return;
+     rack.querySelectorAll('.hockeyBase').forEach(x=>x.classList.remove('selected'));
+     b.classList.add('selected');stageState.selectedBase=base;
+     puck.textContent=base;puck.classList.remove('hidden');puck.classList.add('ready');
+     feedback.textContent=`${base} selected. Swipe upward.`;
+   };
+   rack.appendChild(b);
+ });
+
+ const shapes=['circle','rect','triangle','diamond','hex'];
+ const peeks=['peekLeft','peekRight','peekUp'];
+
+ function nextTarget(){
+   if(!stageState.queue.length){
+     $('hockeyTopLabel').textContent='YOU WIN!';
+     hidden.style.display='none';cover.style.display='none';puck.classList.add('hidden');
+     work.innerHTML='<div style="font-size:30px;font-weight:900;text-align:center">🏆 All 7 pairs cleared!</div>';
+     feedback.innerHTML='✅ You matched and said every pair.';
+     locked=false;success('Air-hockey mission complete!');
+     return;
+   }
+   stageState.current=stageState.queue.shift();
+   stageState.selectedBase=null;stageState.phase='choose';
+   rack.querySelectorAll('.hockeyBase').forEach(x=>x.classList.remove('selected'));
+   puck.classList.add('hidden');puck.classList.remove('ready');
+   cover.className=`shapeCover ${rnd(shapes)}`;
+   hidden.className=`hiddenPoss ${rnd(peeks)}`;
+   hidden.textContent=stageState.current.poss;hidden.style.opacity='1';
+   $('hockeyTopLabel').textContent=`Pair ${stageState.wins+1} of 7`;
+   prompt.textContent='Which base pronoun matches?';
+   feedback.textContent='Look at the hidden possessive.';
+ }
+
+ let dragging=false,sx=0,sy=0,pid=null;
+ puck.onpointerdown=e=>{
+   if(stageState.phase!=='choose'||!stageState.selectedBase)return;
+   dragging=true;pid=e.pointerId;sx=e.clientX;sy=e.clientY;puck.setPointerCapture(e.pointerId);
+ };
+ puck.onpointermove=e=>{
+   if(!dragging||e.pointerId!==pid)return;
+   const dx=e.clientX-sx,dy=e.clientY-sy;
+   puck.style.transform=`translate(calc(-50% + ${dx*.3}px), ${Math.min(18,dy*.15)}px)`;
+ };
+ puck.onpointerup=e=>{
+   if(!dragging||e.pointerId!==pid)return;
+   dragging=false;
+   const dx=e.clientX-sx,dy=e.clientY-sy;
+   puck.style.transform='translateX(-50%)';
+   if(dy>-45){feedback.textContent='Swipe upward more strongly.';return;}
+   launch(dx,dy);
+ };
+
+ function launch(dx,dy){
+   stageState.phase='flying';
+   const ar=arena.getBoundingClientRect(), pr=puck.getBoundingClientRect(), tr=hidden.getBoundingClientRect();
+   const x0=pr.left-ar.left+pr.width/2,y0=pr.top-ar.top+pr.height/2;
+   const tx=tr.left-ar.left+tr.width/2,ty=tr.top-ar.top+tr.height/2;
+   const correct=stageState.selectedBase===stageState.current.base;
+   const ex=correct?tx:x0+Math.max(-120,Math.min(120,dx*1.3));
+   const ey=correct?ty:y0-Math.max(250,Math.min(390,Math.abs(dy)*2.1));
+   puck.animate(
+     [{transform:'translateX(-50%)'},{transform:`translate(calc(-50% + ${ex-x0}px), ${ey-y0}px) scale(.92)`}],
+     {duration:520,easing:'cubic-bezier(.2,.7,.2,1)',fill:'forwards'}
+   ).onfinish=()=>correct?hit():miss();
+ }
+
+ function miss(){
+   feedback.textContent='Miss! Try another base pronoun.';
+   arena.animate([{transform:'translateX(-3px)'},{transform:'translateX(3px)'},{transform:'translateX(0)'}],{duration:180});
+   setTimeout(()=>{puck.getAnimations().forEach(a=>a.cancel());stageState.phase='choose';},220);
+ }
+
+ function hit(){
+   hidden.classList.add('hit');
+   const {base,poss}=stageState.current;
+   puck.classList.add('hidden');stageState.phase='speak';
+   $('hockeyPairArea').innerHTML=`<div class="hockeyPair">${base}<span>→</span>${poss}</div>`;
+   feedback.innerHTML=`🎯 <b>${base} → ${poss}</b>. Now repeat it.`;
+   currentSay=`${base}. ${poss}.`;say(`${base}. ${poss}.`);
+   speakBtn.classList.remove('hidden');
+   const startMic=setupSpeech(`${base} ${poss}`,()=>{
+     stageState.wins++;
+     const used=rack.querySelector(`.hockeyBase[data-base="${base}"]`);
+     if(used)used.classList.add('done');
+     speakBtn.classList.add('hidden');
+     $('hockeyPairArea').innerHTML='';
+     hidden.classList.remove('hit');hidden.style.opacity='0';
+     feedback.innerHTML=`✅ ${base} → ${poss}`;
+     setTimeout(nextTarget,650);
+   });
+   setTimeout(()=>{try{startMic()}catch(e){}},900);
+ }
+
+ nextTarget();
+}
+
+/* Render */
+function updateStageNav(st){
+ document.querySelectorAll('.stageJump').forEach(b=>b.classList.toggle('active',Number(b.dataset.stage)===st));
+}
+function jumpToStage(stage){
+ const found=tasks.findIndex(t=>t.stage===stage);
+ if(found<0)return;
+ idx=found;
+ render();
+}
+document.querySelectorAll('.stageJump').forEach(b=>{
+ b.addEventListener('click',()=>jumpToStage(Number(b.dataset.stage)));
+});
+
+function render(){
+ clearTimers();locked=false;nextBtn.disabled=true;speakBtn.classList.add('hidden');speakBtn.disabled=false;clearBtn.classList.add('hidden');feedback.textContent='Ready.';work.innerHTML='';
+ const q=tasks[idx],st=q.stage;
+ $('hearBtn').disabled=false;$('hearBtn').classList.remove('hidden');
+ $('stageNo').textContent=st;$('stageTag').textContent='STAGE '+st;$('stageTitle').textContent=titles[st];$('bar').style.width=(idx/tasks.length*100)+'%';updateStageNav(st);
+
+ if(q.type==='pair'){
+   renderPairs();prompt.innerHTML=`${q.p} → ?`;help.textContent='Choose the possessive word.';
+   buttons([q.a,...shuffle(PAIRS.map(x=>x[1]).filter(x=>x!==q.a)).slice(0,2)],q.a,()=>{
+     say(`${q.p}. ${q.a}.`);success(`<b>${q.p} → ${q.a}</b>`);
+   });
+   currentSay=`${q.p}. ${q.a}.`;
+ }
+ if(q.type==='picture'){
+   const {o,it}=ownerItem();stageState={o,it};visual(o,it);
+   prompt.innerHTML=`${o.pron} → ? ${it.name}`;help.textContent='Choose the possessive word.';
+   buttons([o.poss,...shuffle(PAIRS.map(x=>x[1]).filter(x=>x!==o.poss)).slice(0,2)],o.poss,()=>{
+     say(`${o.poss} ${it.name}`);success(`<b>${o.poss} ${it.name}</b>`);
+   });
+   currentSay=`${o.poss} ${it.name}`;
+ }
+ if(q.type==='letterDrag'){makeLetterTask(q.word,q.base)}
+ if(q.type==='buildSpeak'){
+   const {o,it}=ownerItem();visual(o,it);
+   prompt.textContent='Build the sentence, then say it';
+   help.textContent='Choose words from the pool. Two possessive words are traps.';
+   buildSentence(o,it,true);
+ }
+ if(q.type==='fadeSpeak'){
+   const {o,it,sentence}=ownerItem();stageState={o,it,sentence};visual(o,it);
+   prompt.textContent='Read it. Remember the possessive. Say it.';
+   help.textContent='Only the possessive word will disappear.';
+   work.innerHTML=`<div class="partialSentence" id="partialSentence">This is <span class="fadePoss" id="fadePoss">${o.poss}</span> ${it.name}.</div>`;
+   speakBtn.classList.remove('hidden');currentSay=sentence;
+   const startMic=setupSpeech(sentence,()=>successAfterSpeech(sentence));
+   say(sentence);
+   fadeTimer=setTimeout(()=>{const el=$('fadePoss');if(el)el.classList.add('fade')},900);
+   setTimeout(()=>{try{startMic()}catch(e){}},1500);
+ }
+ if(q.type==='choiceRepair'){choiceRepair()}
+ if(q.type==='spinnerFinal'){
+   $('hearBtn').disabled=true;$('hearBtn').classList.add('hidden');
+   spinnerFinal();
+ }
+ if(q.type==='cannon'){
+   $('hearBtn').disabled=true;$('hearBtn').classList.add('hidden');
+   cannonStage();
+ }
+ if(q.type==='airHockey'){
+   airHockeyStage();
+ }
+}
+
+$('hearBtn').onclick=()=>say(currentSay);
+nextBtn.onclick=()=>{idx++;if(idx>=tasks.length)finish();else render()};
+function finish(){
+ clearTimers();$('bar').style.width='100%';$('stageTag').textContent='FINISHED';$('stageTitle').textContent='Mission complete';
+ scene.innerHTML='<div style="text-align:center"><div style="font-size:100px">🏆</div><h2>Great work!</h2></div>';
+ prompt.textContent=`Score: ${score} ⭐`;help.textContent=`Correct tasks: ${correct} / ${tasks.length}`;
+ work.innerHTML='';feedback.innerHTML='Final chain: <b>I–my, you–your, he–his, she–her, it–its, we–our, they–their.</b>';
+ nextBtn.disabled=true;speakBtn.classList.add('hidden');clearBtn.classList.add('hidden');
+ currentSay='I, my. You, your. He, his. She, her. It, its. We, our. They, their.';
+}
+render();
+})();
+</script>
+</body>
+</html>
